@@ -364,7 +364,20 @@ public final class Session implements Closeable {
         }
 
         TimeProvider.init(this);
-        dealer.connect();
+        try {
+            dealer.connect();
+        } catch (IOException | TokenProvider.TokenException ex) {
+            // Non-fatal: on an otherwise healthy AP connection, the dealer's own
+            // Login5-based token request occasionally gets rejected outright by
+            // Spotify's backend — a known, currently-unresolved interaction (see
+            // librespot-org/librespot-java issues #1099/#1100, where the Login5
+            // migration itself is documented as "not a complete solution").
+            // Losing the dealer means no *remote* real-time commands or
+            // connect-state push notifications, but this session and its Player
+            // remain fully usable for local playback initiated by this app —
+            // far better than aborting session creation entirely over it.
+            LOGGER.warn("Dealer connection failed, continuing without it", ex);
+        }
 
         LOGGER.info("Authenticated as {}!", apWelcome.getCanonicalUsername());
         mercury().interestedIn(resp -> {
