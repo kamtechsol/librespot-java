@@ -60,7 +60,11 @@ public final class TokenProvider {
                                     .build())
                             .build()
             );
-            if (!resp.hasOk()) throw new TokenException(resp.getError().getNumber());
+            if (!resp.hasOk()) {
+                LOGGER.warn("Login5 rejected token request. {error: {}, hadChallenges: {}}",
+                        resp.getError(), resp.hasChallenges());
+                throw new TokenException(resp.getError().getNumber());
+            }
             Login5.LoginOk okResponse = resp.getOk();
 
             JsonObject tokenBuilder = new JsonObject();

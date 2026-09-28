@@ -25,6 +25,8 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import xyz.gianlu.librespot.mercury.MercuryRequests;
 
 import java.io.IOException;
@@ -37,6 +39,7 @@ import static xyz.gianlu.librespot.dealer.ApiClient.protoBody;
  * @author devgianlu
  */
 public final class Login5Api {
+    private final static Logger LOGGER = LoggerFactory.getLogger(Login5Api.class);
     private final Session session;
 
     public Login5Api(@NotNull Session session) {
