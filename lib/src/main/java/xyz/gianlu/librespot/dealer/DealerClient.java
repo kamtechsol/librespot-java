@@ -353,13 +353,25 @@ public class DealerClient implements Closeable {
                         if (lastScheduledPing == null || lastScheduledPing.isCancelled()) return;
 
                         if (!receivedPong) {
-                            LOGGER.warn("Did not receive ping in 3 seconds. Reconnecting...");
+                            // Was 3s — too tight for a device that's also
+                            // actively streaming audio over the same radio:
+                            // confirmed live, this fired repeatedly during
+                            // normal playback (WiFi contention, not a dead
+                            // connection), forcing a dealer reconnect every
+                            // time and re-registering the Connect session
+                            // from Spotify's side — visible as "the session
+                            // keeps dropping" even though local playback,
+                            // which doesn't depend on the dealer, never
+                            // actually stopped. 10s gives real network jitter
+                            // room without meaningfully delaying detection of
+                            // an actually-dead connection.
+                            LOGGER.warn("Did not receive ping in 10 seconds. Reconnecting...");
                             ConnectionHolder.this.close();
                             return;
                         }
 
                         receivedPong = false;
-                    }, 3, TimeUnit.SECONDS);
+                    }, 10, TimeUnit.SECONDS);
                 }, 0, 30, TimeUnit.SECONDS);
             }
 
