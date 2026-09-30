@@ -215,7 +215,15 @@ public final class DeviceStateHandler implements Closeable, DealerClient.Message
     }
 
     public synchronized void updateState(@NotNull Connect.PutStateReason reason, int playerTime, @NotNull Player.PlayerState state) {
-        if (connectionId == null) throw new IllegalStateException();
+        // No dealer connection (no connectionId) is a supported, permanent
+        // state for a session authenticated without a live Connect pairing —
+        // there's nowhere to PUT this state to, so skip it silently instead
+        // of throwing. Previously fatal here: any track load on such a
+        // session crashed the whole host process on a background thread,
+        // since this is invoked from Player's own internal lifecycle
+        // callbacks (e.g. startedLoading) that the caller can never wrap in
+        // its own try/catch.
+        if (connectionId == null) return;
 
         long timestamp = TimeProvider.currentTimeMillis();
 
