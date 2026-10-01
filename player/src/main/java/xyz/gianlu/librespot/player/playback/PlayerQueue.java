@@ -77,7 +77,18 @@ final class PlayerQueue implements Closeable {
     synchronized void add(@NotNull PlayerQueueEntry entry) {
         if (head == null) head = entry;
         else head.setNext(entry);
-        executorService.execute(entry);
+
+        try {
+            executorService.execute(entry);
+        } catch (java.util.concurrent.RejectedExecutionException ex) {
+            // close() shuts the executor down without taking this instance's
+            // monitor, so it can race a concurrent add()/swap() on another
+            // thread during session teardown. The entry being queued is being
+            // torn down anyway at that point — log and move on instead of
+            // crashing the whole process on an uncaught exception from a
+            // background thread the caller has no way to catch.
+            LOGGER.warn("Couldn't execute {} — queue is shutting down.", entry);
+        }
 
         LOGGER.trace("{} added to queue.", entry);
     }
@@ -103,8 +114,14 @@ final class PlayerQueue implements Closeable {
 
         oldEntry.close();
         if (swapped) {
-            executorService.execute(newEntry);
-            LOGGER.trace("{} swapped with {}.", oldEntry, newEntry);
+            try {
+                executorService.execute(newEntry);
+                LOGGER.trace("{} swapped with {}.", oldEntry, newEntry);
+            } catch (java.util.concurrent.RejectedExecutionException ex) {
+                // See the matching catch in add() — a racy close() during
+                // teardown, not a real failure.
+                LOGGER.warn("Couldn't execute {} after swap — queue is shutting down.", newEntry);
+            }
         }
     }
 
